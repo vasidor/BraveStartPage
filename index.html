@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Новая вкладка</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='%238a8a8a'/%3E%3Ccircle cx='16' cy='16' r='6' fill='%23171717'/%3E%3C/svg%3E">
+<script src="app.js" defer></script>
+<style>
+/* ===== BroPage — монохромная стартовая страница (расширение) ===== */
+
+:root, :root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171717;
+  --bg-soft: #202020;
+  --bg-glow: #232323;
+  --card: #1e1e1e;
+  --border: #2b2b2b;
+  --border-strong: #3a3a3a;
+  --text: #d9d9d9;
+  --muted: #8f8f8f;
+  --tile: #242424;
+  --tile-hover: #2e2e2e;
+  --shape: rgba(255, 255, 255, .07);
+  --overlay: rgba(0, 0, 0, .55);
+  --shadow: 0 16px 40px rgba(0, 0, 0, .45);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f5f5;
+  --bg-soft: #ececec;
+  --bg-glow: #ffffff;
+  --card: #ffffff;
+  --border: #dedede;
+  --border-strong: #b8b8b8;
+  --text: #232323;
+  --muted: #707070;
+  --tile: #ffffff;
+  --tile-hover: #f0f0f0;
+  --shape: rgba(0, 0, 0, .08);
+  --overlay: rgba(0, 0, 0, .35);
+  --shadow: 0 16px 40px rgba(0, 0, 0, .14);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+html { scrollbar-gutter: stable both-edges; }
+
+body {
+  font-family: "Segoe UI Variable Text", "Segoe UI", -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--bg);
+  background-image: radial-gradient(1100px 640px at 50% -10%, var(--bg-glow), transparent 70%);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background-color .25s ease, color .25s ease;
+}
+
+button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+input { font: inherit; color: inherit; }
+svg { display: block; }
+
+::selection { background: rgba(128, 128, 128, .4); }
+
+/* ---------- Фигуры по краям ---------- */
+
+.shapes { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.shapes .sh { position: absolute; color: var(--shape); }
+.sh-dots  { top: -8px;   left: -8px;   }
+.sh-rings { top: -70px;  right: -70px; }
+.sh-blob  { bottom: -50px; left: -60px; }
+.sh-arcs  { bottom: -30px; right: -30px; }
+
+.dash-anim { animation: dashmove 70s linear infinite; }
+@keyframes dashmove { to { stroke-dashoffset: -400; } }
+
+.blob-anim { animation: floaty 14s ease-in-out infinite; transform-origin: center; }
+@keyframes floaty {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-16px) rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shapes * { animation: none !important; }
+}
+
+@media (max-width: 640px) {
+  .sh-blob, .sh-arcs { display: none; }
+  .sh-dots { opacity: .5; }
+}
+
+/* ---------- Компоновка ---------- */
+
+.center {
+  position: relative; z-index: 1;
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 42px;
+  padding: 48px 20px 40px;
+}
+
+/* ---------- Часы ---------- */
+
+.clock { text-align: center; user-select: none; }
+.time {
+  font-size: clamp(58px, 11vw, 112px);
+  font-weight: 200;
+  line-height: 1;
+  letter-spacing: .01em;
+  font-variant-numeric: tabular-nums;
+}
+.date {
+  margin-top: 14px;
+  font-size: 13px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---------- Поиск ---------- */
+
+.search {
+  position: relative;
+  width: min(640px, 92vw);
+  margin-inline: auto;
+  height: 56px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  transition: border-color .15s, box-shadow .15s;
+}
+.search:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow), 0 0 0 3px var(--shape);
+}
+
+.engine {
+  width: 42px; height: 42px; flex: none;
+  border-radius: 11px;
+  display: grid; place-items: center;
+  background: var(--tile); border: 1px solid var(--border);
+  font-size: 15px; font-weight: 600; color: var(--muted);
+  transition: color .15s, background .15s;
+}
+.engine:hover { color: var(--text); background: var(--tile-hover); }
+
+.search-input {
+  flex: 1; min-width: 0; height: 100%;
+  background: none; border: none; outline: none;
+  font-size: 16.5px;
+  padding: 0 8px;
+  color: var(--text);
+}
+.search-input::placeholder { color: var(--muted); }
+
+.search-go {
+  width: 42px; height: 42px; flex: none;
+  border-radius: 11px;
+  display: grid; place-items: center;
+  color: var(--muted);
+  transition: color .15s, background .15s;
+}
+.search-go:hover { color: var(--text); background: var(--tile-hover); }
+.search-go svg { width: 19px; height: 19px; }
+
+/* Выбор поисковика */
+
+.engine-menu {
+  position: absolute;
+  top: calc(100% + 10px); left: 0;
+  min-width: 230px; z-index: 6;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+.engine-item {
+  width: 100%;
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px;
+  border-radius: 9px;
+  color: var(--muted);
+  transition: background .12s, color .12s;
+}
+.engine-item:hover { background: var(--bg-soft); color: var(--text); }
+.engine-item.active { color: var(--text); }
+.engine-letter {
+  width: 30px; height: 30px; flex: none;
+  border-radius: 8px;
+  display: grid; place-items: center;
+  background: var(--tile); border: 1px solid var(--border);
+  font-size: 13px; font-weight: 600;
+}
+.engine-name { flex: 1; text-align: left; font-size: 14px; }
+.engine-check { width: 16px; height: 16px; flex: none; opacity: 0; }
+.engine-item.active .engine-check { opacity: 1; }
+
+/* ---------- Закладки ---------- */
+
+.bookmarks { width: min(920px, 94vw); }
+.bm-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+
+.bm {
+  position: relative;
+  width: 118px;
+  padding: 15px 8px 13px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  transition: background .15s, border-color .15s, opacity .15s;
+}
+.bm:hover { background: var(--bg-soft); border-color: var(--border); }
+
+.bm-link {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-decoration: none;
+}
+.bm-icon {
+  width: 58px; height: 58px;
+  border-radius: 15px;
+  background: var(--tile); border: 1px solid var(--border);
+  display: grid; place-items: center;
+  font-size: 22px; font-weight: 600; color: var(--muted);
+  overflow: hidden;
+  transition: transform .18s ease, color .18s, border-color .18s;
+}
+.bm:hover .bm-icon { transform: translateY(-3px); color: var(--text); border-color: var(--border-strong); }
+.bm-icon img { width: 30px; height: 30px; border-radius: 5px; }
+
+.bm-label {
+  max-width: 100%;
+  font-size: 13.5px; color: var(--muted);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: color .15s;
+}
+.bm:hover .bm-label { color: var(--text); }
+
+/* Кнопки действий на плитке */
+.bm-act {
+  position: absolute; top: 4px;
+  width: 28px; height: 28px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  color: var(--muted);
+  background: var(--card); border: 1px solid var(--border);
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity .15s, transform .15s, color .15s;
+  z-index: 2;
+}
+.bm:hover .bm-act { opacity: 1; transform: translateY(0); }
+.bm-act:hover { color: var(--text); }
+.bm-act svg { width: 13px; height: 13px; }
+.bm-edit { right: 36px; }
+.bm-del  { right: 4px; }
+
+/* Кнопка «Добавить» — текст в рамке, под плитками */
+.bm-add {
+  display: block;
+  margin: 20px auto 0;
+  padding: 9px 26px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  color: var(--muted);
+  font-size: 13.5px;
+  letter-spacing: .02em;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.bm-add:hover { color: var(--text); border-color: var(--border-strong); background: var(--bg-soft); }
+
+/* Перетаскивание */
+.bm.dragging { opacity: .35; }
+.bm.drop-before { border-color: var(--border-strong); box-shadow: inset 3px 0 0 -1px var(--text); }
+
+.bm-empty {
+  width: 100%; text-align: center;
+  font-size: 13.5px; color: var(--muted);
+  padding: 14px 0 6px;
+}
+
+/* ---------- Отключённое состояние ---------- */
+
+body.disabled .clock,
+body.disabled .search,
+body.disabled .bookmarks { display: none; }
+
+.disabled-note {
+  display: none;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.9;
+}
+body.disabled .disabled-note { display: block; }
+
+/* ---------- Модальное окно ---------- */
+
+.modal {
+  position: fixed; inset: 0; z-index: 20;
+  background: var(--overlay);
+  display: grid; place-items: center;
+  padding: 20px;
+}
+.modal-card {
+  width: min(380px, 100%);
+  padding: 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+}
+.modal-card h2 { font-size: 17px; font-weight: 600; margin-bottom: 18px; }
+
+.field { display: block; margin-bottom: 14px; }
+.field span {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted);
+}
+.field input {
+  width: 100%; height: 44px;
+  padding: 0 14px;
+  border-radius: 11px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  outline: none;
+  color: var(--text);
+  transition: border-color .15s;
+}
+.field input:focus { border-color: var(--border-strong); }
+.field input.error { border-color: var(--text); animation: shake .3s; }
+@keyframes shake {
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.btn {
+  height: 40px; padding: 0 20px;
+  border-radius: 11px;
+  font-size: 14px; font-weight: 500;
+  transition: opacity .15s, color .15s, border-color .15s;
+}
+.btn.solid { background: var(--text); color: var(--bg); }
+.btn.solid:hover { opacity: .82; }
+.btn.ghost { border: 1px solid var(--border); color: var(--muted); }
+.btn.ghost:hover { color: var(--text); border-color: var(--border-strong); }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Декоративные абстрактные фигуры по краям -->
+<div class="shapes" aria-hidden="true">
+  <svg class="sh sh-dots" width="320" height="240" viewBox="0 0 320 240">
+    <defs>
+      <pattern id="dotGrid" width="24" height="24" patternUnits="userSpaceOnUse">
+        <circle cx="2.5" cy="2.5" r="2.2" fill="currentColor"/>
+      </pattern>
+    </defs>
+    <rect width="320" height="240" fill="url(#dotGrid)"/>
+  </svg>
+
+  <svg class="sh sh-rings" width="440" height="440" viewBox="0 0 440 440" fill="none">
+    <circle cx="390" cy="50" r="210" stroke="currentColor" stroke-width="1.4"/>
+    <circle class="dash-anim" cx="390" cy="50" r="160" stroke="currentColor" stroke-width="1.2" stroke-dasharray="6 14"/>
+    <circle cx="390" cy="50" r="110" stroke="currentColor" stroke-width="1" opacity=".55"/>
+    <circle cx="230" cy="50" r="4.5" fill="currentColor"/>
+  </svg>
+
+  <svg class="sh sh-blob" width="420" height="420" viewBox="-70 -70 140 140" fill="none">
+    <path class="blob-anim" fill="currentColor" d="M44.8,-43.5C56.7,-32.9,64.2,-16.4,62.3,-2C60.4,12.5,49.1,24.8,37.2,35.1C25.3,45.4,12.7,53.7,-1.6,55.3C-15.9,56.9,-31.9,51.8,-43.1,41.4C-54.3,31,-60.7,15.3,-58.9,1.8C-57.1,-11.7,-47.1,-23,-36,-33.7C-24.9,-44.4,-12.4,-54.5,1.9,-56.4C16.2,-58.3,32.9,-52.1,44.8,-43.5Z"/>
+    <circle cx="56" cy="-40" r="26" stroke="currentColor" stroke-width="1.2"/>
+  </svg>
+
+  <svg class="sh sh-arcs" width="360" height="360" viewBox="0 0 360 360" fill="none" stroke="currentColor">
+    <path d="M8 352 A344 344 0 0 0 352 8" stroke-width="1.3"/>
+    <path d="M58 352 A294 294 0 0 0 352 58" stroke-width="1.1" opacity=".65"/>
+    <path d="M108 352 A244 244 0 0 0 352 108" stroke-width="1" opacity=".4"/>
+    <circle cx="186" cy="186" r="3.5" fill="currentColor" stroke="none"/>
+  </svg>
+</div>
+
+<main class="center">
+  <div class="clock">
+    <div id="time" class="time">--:--</div>
+    <div id="date" class="date"></div>
+  </div>
+
+  <form id="searchForm" class="search" role="search" action="#">
+    <button type="button" id="engineBtn" class="engine" title="Поисковая система">
+      <span id="engineLetter">G</span>
+    </button>
+    <input id="searchInput" class="search-input" type="text" placeholder="Поиск в Google…" autocomplete="off" spellcheck="false" autofocus>
+    <button type="submit" class="search-go" title="Искать"></button>
+    <div id="engineMenu" class="engine-menu hidden"></div>
+  </form>
+
+  <section class="bookmarks" aria-label="Закладки">
+    <div id="bmGrid" class="bm-grid"></div>
+    <button id="bmAdd" class="bm-add" type="button">Добавить</button>
+  </section>
+
+  <p class="disabled-note">Начальная страница отключена.<br>Включите её в меню расширения BroPage.</p>
+</main>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-card">
+    <h2 id="modalTitle">Новая закладка</h2>
+    <form id="bmForm">
+      <label class="field">
+        <span>Название</span>
+        <input id="bmName" type="text" maxlength="40" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Адрес</span>
+        <input id="bmUrl" type="text" placeholder="example.com" spellcheck="false" autocomplete="off">
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="bmCancel" class="btn ghost">Отмена</button>
+        <button type="submit" class="btn solid">Сохранить</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+</body>
+</html>
